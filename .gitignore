@@ -221,3 +221,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project runtime data
+data/*
+!data/uploads/
+data/uploads/*
+!data/uploads/king_Ashoka.pdf
+!data/uploads/Rag_research_paper.pdf
+!data/uploads/Beyond_Text_RAG_Multimodal_RAG.pptx
+*.db
+*.sqlite
+*.sqlite3
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

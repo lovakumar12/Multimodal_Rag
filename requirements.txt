@@ -1,4 +1,4 @@
-# Multimodal RAG classroom project — all free, open-source, no API keys.
+# Multimodal RAG classroom project. Gemini image generation requires GEMINI_API_KEY.
 # Note: in the Colab notebook these are installed via a `!pip install` cell.
 # This file is provided for reference / local (non-Colab) runs.
 
@@ -8,7 +8,10 @@ sentence-transformers   # local embedding model (all-MiniLM-L6-v2)
 faiss-cpu         # local vector store / similarity search
 pillow            # image handling
 requests          # talk to the local Ollama server (http://localhost:11434)
-matplotlib        # preview extracted images in the notebook
+fastapi           # HTTP API framework
+uvicorn[standard] # FastAPI server
+python-multipart  # PDF upload form parsing
+python-dotenv     # load GEMINI_API_KEY and other settings from .env
 
 # Ollama itself is NOT a pip package — it's installed via:
 #   curl -fsSL https://ollama.com/install.sh | sh

@@ -1,152 +1,255 @@
-# Multimodal RAG: Beyond Text RAG
-### A 30–40 minute classroom project — 100% free, 100% local (Ollama), no API keys
+# Enterprise Multimodal RAG Platform
 
-Students already know basic RAG (PDF → chunks → embeddings → FAISS → LLM). This project shows
-how the *same* retrieval pipeline extends to **tables** and **images/charts**, using only local,
-free tools — runnable entirely inside Google Colab's free GPU tier.
+> **A Production-Grade, Scalable Multimodal Retrieval-Augmented Generation (RAG) Platform for Complex Documents.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg)](https://www.typescriptlang.org/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC.svg)](https://tailwindcss.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 
 ---
 
-## 1. Folder structure
+## 🌟 Overview & Architecture Philosophy
+
+Standard RAG architectures treat documents as flat streams of text. When documents contain architecture diagrams, financial charts, multi-column data tables, screenshots, and complex hierarchical layouts (such as PDFs, PPTX slide decks, DOCX reports, and technical schematics), traditional RAG fails:
+
+- **Lost Visual Context**: Crucial diagrams and charts are ignored or discarded.
+- **Table Corruption**: Multi-row, multi-column tables are crushed into fragmented tokens.
+- **Missing Hierarchical Lineage**: Relationships between document sections, pages, captions, and visual blocks are severed.
+- **Hallucinated Answers**: Generative models cannot cite or display original visual evidence.
+
+This platform solves multimodal document intelligence by implementing a **Decoupled SaaS Architecture** with a relational hierarchy, multi-signal image scoring, graph-expanded hybrid retrieval, and strictly grounded multimodal synthesis.
 
 ```
-multimodal_rag/
-├── README.md                          # this file
-├── requirements.txt                   # pip dependencies (reference)
-├── Multimodal_RAG_Classroom.ipynb     # the full runnable notebook — open this in Colab
-└── data/
-    ├── sample_report.pdf              # <- put your PDF here (or upload it inside the notebook)
-    └── extracted_images/              # created automatically when the notebook runs
+                              ┌─────────────────────────────────────────┐
+                              │           React + Vite Frontend         │
+                              │  (Visual Cards, Table View, Citations)  │
+                              └────────────────────┬────────────────────┘
+                                                   │ HTTP / REST
+                                                   ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   FastAPI Application                                  │
+│  ┌───────────────────────┐  ┌─────────────────────────────┐  ┌─────────────────────┐  │
+│  │ Document Ingestion &  │  │   Hybrid Retriever & Graph   │  │ Grounded Generator  │  │
+│  │ Multimodal Extractors │  │      Relationship Scorer     │  │  (Gemini / OpenAI)  │  │
+│  └───────────┬───────────┘  └──────────────┬───────────────┘  └──────────┬──────────┘  │
+└──────────────┼─────────────────────────────┼─────────────────────────────┼─────────────┘
+               │                             │                             │
+               ▼                             ▼                             ▼
+┌──────────────────────────────┐ ┌───────────────────────┐ ┌─────────────────────────────┐
+│ Relational Database (SQLite/ │ │ Vector Store (FAISS / │ │ Object Storage (Local / S3) │
+│ PostgreSQL + pgvector)       │ │ pgvector Index)       │ │ (Page Renders, Images, Docs)│
+└──────────────────────────────┘ └───────────────────────┘ └─────────────────────────────┘
 ```
 
-## 2. Installation instructions
+---
 
-1. Open `Multimodal_RAG_Classroom.ipynb` in **Google Colab**.
-2. `Runtime → Change runtime type → T4 GPU` (free tier is enough).
-3. Run the cells top to bottom. The notebook installs everything itself:
-   - Python packages via `pip install`
-   - Ollama via `curl -fsSL https://ollama.com/install.sh | sh`
-   - The vision-language model via `ollama pull qwen2.5vl:3b`
+## 🚀 Key Platform Capabilities
 
-No OpenAI / Gemini / Claude / Groq / AWS account or API key is required anywhere.
+### 1. Robust Multimodal Extraction Across Formats
+- **PDF**: PyMuPDF + pdfplumber hybrid extracting font-size heading hierarchies, 120 DPI page previews, structured tables (both JSON and clean Markdown), and embedded vector/raster images with bounding coordinates.
+- **PowerPoint (PPTX)**: python-pptx extractor treating slides as first-class pages, extracting shapes, tables, speaker notes, and embedded high-resolution graphics.
+- **Word (DOCX)**: python-docx extractor preserving heading levels (H1–H3), multi-column tables, inline figures, and logical pagination.
+- **Images (PNG, JPG, TIFF, WEBP)**: Direct OCR via pytesseract and multimodal vision descriptions.
 
-## 3. Local models used
+### 2. Vision Understanding & Automated Description
+- Generates high-fidelity textual summaries and structural descriptions for all figures, charts, and diagrams using **Google Gemini 3.5 Flash Lite** or **OpenAI GPT-4o Vision**.
+- Automatic heuristic fallback ensures the pipeline never halts even when offline or without API credits.
 
-| Purpose | Model | Approx. size / requirement |
-|---|---|---|
-| Text embeddings | `all-MiniLM-L6-v2` (Sentence-Transformers) | ~90 MB, runs on CPU |
-| LLM + Vision-Language Model | `qwen2.5vl:3b` (via Ollama) | ~3.2 GB download, ~4–5 GB VRAM — fits free Colab T4 |
-| Optional stronger VLM | `qwen2.5vl:7b` | ~6 GB download, ~8–9 GB VRAM — still fits a T4 (15 GB) |
+### 3. Hierarchical Relational Data Model
+Preserves full document lineage from file to atomic chunk:
+```
+KnowledgeBase ──> Document ──> DocumentPage ──> DocumentSection ──> ContentBlock
+                                                                          ├── TextChunk
+                                                                          ├── ExtractedImage
+                                                                          └── ExtractedTable
+```
 
-Change the `MODEL_NAME` variable in the notebook to switch between them. If no GPU is available at
-all, Ollama will still run the 3B model on CPU — just noticeably slower per answer.
+### 4. Graph-Expanded Hybrid Retrieval & Multi-Signal Image Scoring
+Combines semantic dense vector search with document structural relationships:
+- If a relevant text chunk is retrieved, the retriever traverses relationships to surface co-located tables, figures, and page previews from that section.
+- **Multi-Signal Image Relevance Formula**:
+  $$S_{image}(q, I) = w_1 S_{desc}(q, I) + w_2 S_{text}(q, T_{assoc}) + w_3 S_{caption}(q, I_{cap}) + w_4 S_{page}(q, P_{assoc}) + w_5 \mathbb{I}_{co-occur}$$
+  Weights default to $w_1=0.35, w_2=0.25, w_3=0.15, w_4=0.15, w_5=0.10$.
 
-## 4. Sample input / dataset
+### 5. Grounded Multimodal Synthesis & Interactive Citations
+- LLM is instructed with strict grounding rules: answers are synthesized solely from retrieved context.
+- Generates precise bracketed citations: `[Doc: filename, Page: X, Section: Y]`.
+- Directly returns structured tables and original visual evidence cards with confidence score meters.
 
-Use a small **company annual report / product report / business report** PDF that contains:
-- normal paragraph text
-- at least one table
-- at least one chart, graph, or diagram image
+---
 
-If you don't have one handy, any publicly available company annual report PDF (search "[company
-name] annual report filetype:pdf") works well, or you can substitute your own document — a
-product spec sheet, a project status report, etc. Upload it inside the notebook (Step 3, `data/
-sample_report.pdf`) or drag it directly into the Colab file browser at that path.
+## 💻 Tech Stack
 
-## 5. Step-by-step execution order
-
-1. **Setup** — check GPU, install pip packages, install & start Ollama, pull the model.
-2. **Upload PDF** — place your report at `data/sample_report.pdf`.
-3. **Content extraction** — pull out text (PyMuPDF), tables (pdfplumber), and images (PyMuPDF)
-   separately.
-4. **Chunking** — split long text into overlapping chunks (tables/images stay whole).
-5. **Image captioning** — the local VLM writes a short description of each extracted image/chart.
-6. **Embeddings** — embed text chunks, table markdown, and image captions into one shared vector
-   space with Sentence-Transformers.
-7. **FAISS index** — build one vector store containing everything.
-8. **Retriever** — top-k similarity search, type-agnostic.
-9. **Multimodal generation** — text/table context goes in as plain text; retrieved images are sent
-   to the VLM as actual images (not just captions) for the final answer.
-10. **Demo questions** — run the five example questions and inspect which content type was
-    retrieved for each.
-
-## 6. Expected output per stage
-
-| Stage | Expected output |
+| Layer | Technology |
 |---|---|
-| Text extraction | List of `{page, text}` — one entry per page with visible text |
-| Table extraction | List of `{page, markdown}` — each table rendered as a markdown grid |
-| Image extraction | PNG/JPEG files saved under `data/extracted_images/`, plus their page numbers |
-| Chunking | A few hundred short text chunks (~600 characters each) |
-| Captioning | One 1–2 sentence description printed per extracted image |
-| Embeddings | A NumPy array of shape `(num_items, 384)` |
-| FAISS index | `index.ntotal` equals the total number of embedded items |
-| Retrieval | Top-k results printed with type (`text`/`table`/`image`), page, and similarity score |
-| Generation | A natural-language answer, plus the list of sources it was grounded in |
+| **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12+, Uvicorn, AnyIO) |
+| **ORM & Database** | SQLAlchemy 2.0 (Async), `aiosqlite` (local) & PostgreSQL + `pgvector` (production) |
+| **Vector Engine** | [FAISS](https://github.com/facebookresearch/faiss) (Flat inner-product cosine) & pgvector |
+| **Embeddings** | [Sentence-Transformers](https://sbert.net/) (`all-MiniLM-L6-v2`), Gemini `text-embedding-004` |
+| **LLM & Vision** | Google Gemini (`gemini-3.5-flash-lite`, `gemini-3.6-flash`), OpenAI (`gpt-4o`) |
+| **Frontend Framework** | [React 19](https://react.dev/), [TypeScript 5.7](https://www.typescriptlang.org/), [Vite 6](https://vitejs.dev/) |
+| **Styling & Icons** | [Tailwind CSS v4](https://tailwindcss.com/), [Lucide React](https://lucide.dev/) |
+| **HTTP Client** | Axios |
+| **Containerization** | Docker, Docker Compose, Multi-stage builds, Nginx reverse proxy |
 
-## 7. Troubleshooting
+---
 
-See Section 14 inside the notebook — covers Ollama install/start issues, slow model pulls, PDFs
-with no extractable tables/images, GPU runtime configuration, and answers that seem to ignore an
-image.
+## 📁 Repository Structure
 
-## 8. Architecture: traditional RAG vs. multimodal RAG
-
-**Traditional RAG:** `Text → Chunks → Embeddings → Vector Search → LLM → Answer`
-
-**Multimodal RAG (this project):**
 ```
-Text + Tables + Images
-        ↓
-Content Extraction (type-specific tools)
-        ↓
-Representation (chunks / table-as-markdown / image captions)
-        ↓
-One shared embedding space → FAISS
-        ↓
-Retriever (unchanged from basic RAG)
-        ↓
-Multimodal context (text + the real retrieved image)
-        ↓
-Local Vision-Language Model → Answer
+Multimodal_Rag/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/              # FastAPI route controllers (health, kb, docs, chat, search, assets)
+│   │   ├── core/                # Configuration, async DB session, logging, security, errors
+│   │   ├── embeddings/          # SentenceTransformers, Gemini, OpenAI embedding providers
+│   │   ├── extraction/          # Hybrid PDF, PPTX, DOCX, and Image extractors + Vision describer
+│   │   ├── generation/          # Grounded generator, context assembler, LLM provider
+│   │   ├── ingestion/           # Pipeline coordinator, structure chunker, relationship builder
+│   │   ├── models/              # Normalized SQLAlchemy entity models
+│   │   ├── repositories/        # Async DB access layer with eager relationship loading
+│   │   ├── reranking/           # Cross-modal reranker
+│   │   ├── retrieval/           # Hybrid retriever, vector store, multi-signal image scorer
+│   │   ├── schemas/             # Pydantic validation schemas
+│   │   ├── services/            # Business logic (KB, Document, Chat services)
+│   │   ├── storage/             # Local and S3 storage services
+│   │   └── workers/             # Background ingestion task worker
+│   ├── tests/                   # Pytest test suite (unit, integration, end-to-end)
+│   ├── Dockerfile               # Multi-stage Python 3.12 backend container
+│   ├── requirements.txt         # Pinned backend dependencies
+│   └── run.py                   # Development application runner
+├── frontend/
+│   ├── src/
+│   │   ├── api/client.ts        # Typed Axios API client
+│   │   ├── components/          # VisualEvidenceCard, TableViewer, SourceDrawer, FileUploadModal, Navbar
+│   │   ├── pages/               # DashboardPage, KnowledgeBasesPage, DocumentsPage, ChatPage
+│   │   ├── types/index.ts       # Shared TypeScript schemas
+│   │   ├── App.tsx              # Main application router and state
+│   │   └── index.css            # Tailwind CSS v4 styling
+│   ├── Dockerfile               # Production multi-stage Nginx build
+│   ├── nginx.conf               # SPA routing & API reverse proxy configuration
+│   ├── package.json             # NPM scripts and dependencies
+│   └── vite.config.ts           # Vite dev server and proxy config
+├── docs/                        # Comprehensive Architecture & Deployment Documentation
+│   ├── architecture.md          # Relational diagrams & design choices
+│   ├── rag-pipeline.md          # Multi-signal scoring formulas & ingestion deep-dive
+│   ├── api.md                   # Complete REST OpenAPI documentation
+│   └── deployment.md            # AWS ECS/Fargate, RDS Aurora, S3, Docker Compose guide
+├── docker-compose.yml           # Full-stack Docker orchestration
+├── .env.example                 # Template for environment configuration
+└── README.md                    # Platform documentation (this file)
 ```
-What changes: extraction (type-specific tools) and generation (a VLM that can accept an actual
-image). What stays the same: chunking → embed → FAISS → retrieve — the core RAG skeleton students
-already know.
 
-## 9. 30–40 minute teaching flow
+---
 
-| Time | Segment |
-|---|---|
-| 0–5 min | Recap basic RAG → introduce the multimodal RAG diagram |
-| 5–10 min | Setup (pre-run before class if possible to skip download wait time) |
-| 10–15 min | Content extraction — show raw text/table/image outputs |
-| 15–18 min | Chunking + image captioning — the key "bridge" step |
-| 18–23 min | Embeddings + FAISS — point out it's identical to what they already know |
-| 23–28 min | Retrieval + multimodal generation function walkthrough |
-| 28–35 min | Run all 5 demo questions live, discuss retrieved sources |
-| 35–40 min | Recap comparison table + optional improvements + Q&A |
+## ⚡ Quickstart: Local Development
 
-## 10. Optional improvements for advanced students
+### Prerequisites
+- **Python**: 3.12 or higher
+- **Node.js**: 20 or higher & npm
+- **Tesseract OCR** (optional, for image OCR fallback)
 
-- Swap the caption-then-embed trick for true joint embeddings (e.g. CLIP).
-- Handle complex tables with `camelot-py`, or have the VLM read a rendered table image directly.
-- Add a cross-encoder re-ranker on top of FAISS retrieval.
-- Route questions to the right retrieval strategy (table-focused vs. image-focused vs. general).
-- Extend to video: sample frames with OpenCV, caption each frame the same way images are
-  captioned here, and reuse the same embed → FAISS → retrieve → VLM pipeline. Optionally
-  transcribe audio locally with Whisper and treat the transcript as another text document.
-- Try a larger local model (`qwen2.5vl:7b` or `qwen2.5vl:32b`) for better chart-reading accuracy.
+### 1. Environment Configuration
+Clone the repository and create your `.env` file from the example:
+```bash
+cp .env.example .env
+```
 
-## Why video was left out of the main notebook
+Edit `.env` to configure your API keys (optional if running in offline fallback mode):
+```ini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.5-flash-lite
+DEFAULT_LLM_PROVIDER=gemini
+EMBEDDING_PROVIDER=sentence-transformers
+AUTO_DESCRIBE_IMAGES=true
+```
 
-Given the 30–40 minute window, video (frame extraction + optional local speech-to-text) was kept
-out of the runnable code so the PDF + tables + images demo can be taught thoroughly. Section 10
-above sketches exactly how to extend today's pipeline to video as a follow-up exercise — the
-retrieval and generation code you build today needs no changes, only a new frame-extraction step.
+### 2. Backend Setup & Startup
+Navigate to the root directory and install Python dependencies:
+```bash
+pip install -r backend/requirements.txt
+```
 
+Start the FastAPI backend:
+```bash
+python backend/run.py
+```
+* The backend API will be live at `http://localhost:8000`
+* Interactive OpenAPI Swagger docs: `http://localhost:8000/docs`
+* Health check: `http://localhost:8000/api/v1/health`
 
+### 3. Frontend Setup & Startup
+In a separate terminal, navigate to the `frontend/` directory:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+* The React frontend will be live at `http://localhost:5173`
+* Vite automatically proxies `/api/` calls to `http://localhost:8000`
 
-*************************************** hive llm models api******
+---
 
-U29ApLUt0gpahZmTLXS1Dg==
+## 🐳 Quickstart: Docker Compose
+
+To launch the full enterprise stack (FastAPI backend, React frontend, PostgreSQL with pgvector, and Redis cache):
+
+```bash
+# Build and start all services
+docker compose up --build -d
+
+# View service logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+```
+
+Services exposed:
+- **Frontend SPA**: `http://localhost:3000`
+- **Backend API & Swagger**: `http://localhost:8000/docs`
+- **PostgreSQL Vector DB**: `localhost:5432`
+
+---
+
+## 🧪 Running the Test Suite
+
+The platform includes comprehensive unit, integration, and end-to-end tests covering all extractors, the chunker, the image relevance scorer, API endpoints, and the full multimodal pipeline.
+
+Run the entire suite with pytest:
+```bash
+python -m pytest backend/tests/ -v
+```
+
+Run specific test modules:
+```bash
+# Multi-signal image scorer tests
+python -m pytest backend/tests/test_image_scorer.py -v
+
+# Document extractors (PDF, PPTX, DOCX)
+python -m pytest backend/tests/test_extractors.py -v
+
+# Full end-to-end RAG pipeline
+python -m pytest backend/tests/test_end_to_end.py -v
+```
+
+---
+
+## 📖 In-Depth Documentation
+
+For advanced architecture guides, deployment patterns, and API contracts, refer to the `docs/` directory:
+
+- 🏛️ **[System Architecture](docs/architecture.md)**: Layered design, domain models, entity relationships, and async lifecycle.
+- 🔬 **[Multimodal RAG Pipeline](docs/rag-pipeline.md)**: Extraction techniques, structure-aware chunking, vector indexing, image scoring formulas, and prompt engineering.
+- 📡 **[REST API Reference](docs/api.md)**: Endpoints, request/response JSON schemas, and error codes.
+- 🚀 **[Production Deployment Guide](docs/deployment.md)**: AWS ECS/Fargate, S3, RDS Aurora PostgreSQL, Redis, and observability.
+
+---
+
+## 🛡️ License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
