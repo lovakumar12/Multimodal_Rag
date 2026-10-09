@@ -1,0 +1,23 @@
+# ==============================================================================
+# AWS MULTIMODAL RAG TERRAFORM VARIABLES EXAMPLE
+# Rename this file to 'terraform.tfvars' and supply your secret values
+# ==============================================================================
+
+aws_region   = "us-east-1"
+project_name = "multimodal-rag"
+environment  = "production"
+
+# Database Credentials
+db_name     = "multimodal_rag"
+db_username = "ragadmin"
+db_password = "ReplaceWithAStrongPassword123!"
+
+# LLM Providers
+gemini_api_key = "AIzaSy..."
+openai_api_key = "" # optional
+
+# Scaling & Capacity
+backend_min_capacity  = 2
+backend_max_capacity  = 10
+frontend_min_capacity = 2
+frontend_max_capacity = 8
