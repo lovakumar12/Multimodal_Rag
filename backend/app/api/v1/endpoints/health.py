@@ -39,7 +39,11 @@ async def ready(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
             "indexed_vectors": vector_count,
             "dimension": vector_store.dimension,
         },
-        "storage": "local" if settings.UPLOAD_DIR.exists() else "unreachable",
+        "storage": (
+            f"s3://{settings.OBJECT_STORAGE_BUCKET}"
+            if settings.STORAGE_BACKEND == "s3"
+            else ("local" if settings.UPLOAD_DIR.exists() else "unreachable")
+        ),
     }
 
 

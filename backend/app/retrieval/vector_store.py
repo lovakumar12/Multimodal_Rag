@@ -2,7 +2,13 @@ import os
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import faiss
+try:
+    import faiss
+    HAS_FAISS = True
+except Exception as e:
+    faiss = None
+    HAS_FAISS = False
+
 import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,35 +33,84 @@ class VectorIndexEntry:
         self.metadata = metadata or {}
 
 
+class NumpyVectorIndex:
+    """NumPy-backed cosine similarity index fallback when FAISS C-extensions cannot be loaded."""
+
+    def __init__(self, dimension: int):
+        self.dimension = dimension
+        self.vectors = np.empty((0, dimension), dtype=np.float32)
+
+    @property
+    def ntotal(self) -> int:
+        return self.vectors.shape[0]
+
+    def add(self, vec_np: np.ndarray) -> None:
+        if self.vectors.shape[0] == 0:
+            self.vectors = vec_np.copy()
+        else:
+            self.vectors = np.vstack([self.vectors, vec_np])
+
+    def search(self, q_np: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+        if self.ntotal == 0:
+            return np.empty((1, 0), dtype=np.float32), np.empty((1, 0), dtype=np.int64)
+        sims = np.dot(self.vectors, q_np[0])
+        k = min(k, self.ntotal)
+        indices = np.argsort(-sims)[:k]
+        scores = sims[indices]
+        return np.array([scores], dtype=np.float32), np.array([indices], dtype=np.int64)
+
+    def reset(self) -> None:
+        self.vectors = np.empty((0, self.dimension), dtype=np.float32)
+
+
+def normalize_vector(v: np.ndarray) -> np.ndarray:
+    """Normalizes vector in-place using FAISS or NumPy."""
+    if HAS_FAISS and faiss is not None:
+        faiss.normalize_L2(v)
+    else:
+        norm = np.linalg.norm(v, axis=1, keepdims=True)
+        norm[norm == 0] = 1.0
+        v[:] = v / norm
+    return v
+
+
 class LocalVectorStore:
-    """FAISS-backed vector store for high-performance similarity search with persistence and DB sync."""
+    """FAISS-backed vector store with NumPy fallback for similarity search with persistence and DB sync."""
 
     def __init__(self, dimension: int = settings.VECTOR_DIMENSION):
         self.dimension = dimension
-        # IndexFlatIP with normalized vectors computes exact cosine similarity
-        self.index = faiss.IndexFlatIP(dimension)
         self.entries: List[VectorIndexEntry] = []
         self.index_dir = settings.BASE_DATA_DIR / "indexes"
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.index_file = self.index_dir / "faiss.index"
         self.entries_file = self.index_dir / "entries.pkl"
+        self.vectors_file = self.index_dir / "vectors.npy"
+
+        if HAS_FAISS:
+            self.index = faiss.IndexFlatIP(dimension)
+        else:
+            logger.info("FAISS not available or restricted; using NumPy cosine similarity fallback.")
+            self.index = NumpyVectorIndex(dimension)
         self.load()
 
     def save(self) -> None:
-        """Persists the FAISS index and metadata entries to disk."""
+        """Persists the index and metadata entries to disk."""
         try:
             if self.index.ntotal > 0:
-                faiss.write_index(self.index, str(self.index_file))
+                if HAS_FAISS:
+                    faiss.write_index(self.index, str(self.index_file))
+                else:
+                    np.save(str(self.vectors_file), self.index.vectors)
                 with open(self.entries_file, "wb") as f:
                     pickle.dump(self.entries, f)
-                logger.info(f"Persisted FAISS index with {self.index.ntotal} vectors to {self.index_file}")
+                logger.info(f"Persisted vector index with {self.index.ntotal} vectors")
         except Exception as e:
-            logger.warning(f"Failed to persist FAISS index: {e}")
+            logger.warning(f"Failed to persist vector index: {e}")
 
     def load(self) -> bool:
-        """Loads the FAISS index and metadata entries from disk if available."""
+        """Loads the index and metadata entries from disk if available."""
         try:
-            if self.index_file.exists() and self.entries_file.exists():
+            if HAS_FAISS and self.index_file.exists() and self.entries_file.exists():
                 loaded_index = faiss.read_index(str(self.index_file))
                 with open(self.entries_file, "rb") as f:
                     loaded_entries = pickle.load(f)
@@ -63,8 +118,16 @@ class LocalVectorStore:
                 self.entries = loaded_entries
                 logger.info(f"Loaded existing FAISS index with {self.index.ntotal} vectors from {self.index_file}")
                 return True
+            elif not HAS_FAISS and self.vectors_file.exists() and self.entries_file.exists():
+                loaded_vectors = np.load(str(self.vectors_file))
+                with open(self.entries_file, "rb") as f:
+                    loaded_entries = pickle.load(f)
+                self.index.vectors = loaded_vectors
+                self.entries = loaded_entries
+                logger.info(f"Loaded existing NumPy vector index with {self.index.ntotal} vectors")
+                return True
         except Exception as e:
-            logger.warning(f"Could not load FAISS index from disk ({e}), starting fresh.")
+            logger.warning(f"Could not load vector index from disk ({e}), starting fresh.")
         return False
 
     async def sync_from_db(self, session: AsyncSession) -> None:
@@ -169,13 +232,13 @@ class LocalVectorStore:
             )
 
         vec_np = np.array(all_vectors, dtype=np.float32)
-        faiss.normalize_L2(vec_np)
+        normalize_vector(vec_np)
         new_index.add(vec_np)
 
         self.index = new_index
         self.entries = new_entries
         self.save()
-        logger.info(f"Successfully synced {self.index.ntotal} vectors from database into FAISS index.")
+        logger.info(f"Successfully synced {self.index.ntotal} vectors from database into vector index.")
 
     def add_vectors(
         self,
@@ -190,7 +253,7 @@ class LocalVectorStore:
             return
 
         vec_np = np.array(vectors, dtype=np.float32)
-        faiss.normalize_L2(vec_np)
+        normalize_vector(vec_np)
 
         self.index.add(vec_np)
 
@@ -219,9 +282,9 @@ class LocalVectorStore:
             return []
 
         q_np = np.array([query_vector], dtype=np.float32)
-        faiss.normalize_L2(q_np)
+        normalize_vector(q_np)
 
-        search_k = min(self.index.ntotal, max(top_k * 4, 30))
+        search_k = min(self.index.ntotal, max(top_k * 20, 500)) if (kb_id or entity_type) else min(self.index.ntotal, max(top_k * 4, 50))
         scores, indices = self.index.search(q_np, search_k)
 
         results: List[Tuple[VectorIndexEntry, float]] = []
@@ -251,6 +314,8 @@ class LocalVectorStore:
             self.index_file.unlink()
         if self.entries_file.exists():
             self.entries_file.unlink()
+        if self.vectors_file.exists():
+            self.vectors_file.unlink()
 
 
 vector_store = LocalVectorStore()

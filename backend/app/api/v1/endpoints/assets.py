@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, status
 from fastapi.responses import Response
 from backend.app.core.errors import NotFoundError
-from backend.app.storage.local_storage import storage_service
+from backend.app.storage import storage_service
 
 router = APIRouter(tags=["Assets"])
 

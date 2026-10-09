@@ -56,22 +56,33 @@ class GeminiLLMProvider(BaseLLMProvider):
                 raise inner_e
 
 
-class OpenAILLMProvider(BaseLLMProvider):
-    """OpenAI generation provider."""
+class OpenAICompatibleLLMProvider(BaseLLMProvider):
+    """Provider for APIs that implement the OpenAI chat completions interface."""
 
-    def __init__(self, model_name: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: Optional[str],
+        model_name: str,
+        provider_name: str,
+        base_url: Optional[str] = None,
+    ):
         self.model_name = model_name
+        self.provider_name = provider_name
         self.client = None
-        if settings.OPENAI_API_KEY:
+        if api_key:
             try:
                 import openai
-                self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+
+                client_options = {"api_key": api_key}
+                if base_url:
+                    client_options["base_url"] = base_url
+                self.client = openai.OpenAI(**client_options)
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI client: {e}")
+                logger.warning(f"Failed to initialize {provider_name} client: {e}")
 
     def generate(self, prompt: str, system_instruction: Optional[str] = None) -> str:
         if not self.client:
-            raise RuntimeError("OpenAI API key not configured")
+            raise RuntimeError(f"{self.provider_name} API key not configured")
 
         messages = []
         if system_instruction:
@@ -83,7 +94,30 @@ class OpenAILLMProvider(BaseLLMProvider):
             messages=messages,
             temperature=0.2,
         )
-        return response.choices[0].message.content.strip()
+        return (response.choices[0].message.content or "").strip()
+
+
+class OpenAILLMProvider(OpenAICompatibleLLMProvider):
+    """OpenAI generation provider."""
+
+    def __init__(self, model_name: str = settings.LLM_MODEL):
+        super().__init__(
+            api_key=settings.OPENAI_API_KEY,
+            model_name=model_name,
+            provider_name="OpenAI",
+        )
+
+
+class GroqLLMProvider(OpenAICompatibleLLMProvider):
+    """Groq generation provider using its OpenAI-compatible API."""
+
+    def __init__(self, model_name: str = settings.LLM_MODEL):
+        super().__init__(
+            api_key=settings.GROQ_API_KEY,
+            model_name=model_name,
+            provider_name="Groq",
+            base_url="https://api.groq.com/openai/v1",
+        )
 
 
 class LocalFallbackLLMProvider(BaseLLMProvider):
@@ -102,7 +136,9 @@ def get_llm_provider() -> BaseLLMProvider:
         if provider_name == "gemini" and settings.GEMINI_API_KEY:
             return GeminiLLMProvider()
         elif provider_name == "openai" and settings.OPENAI_API_KEY:
-            return OpenAILLMProvider()
+            return OpenAILLMProvider(model_name=settings.LLM_MODEL)
+        elif provider_name == "groq" and settings.GROQ_API_KEY:
+            return GroqLLMProvider(model_name=settings.LLM_MODEL)
     except Exception as e:
         logger.warning(f"Failed to initialize primary LLM {provider_name}: {e}. Using fallback.")
 

@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     THUMBNAIL_DIR: Path = ROOT_DIR / "data" / "thumbnails"
     PAGE_DIR: Path = ROOT_DIR / "data" / "pages"
 
+    # Cloud Object Storage (S3 / Local)
+    STORAGE_BACKEND: str = "local"  # "local" or "s3"
+    OBJECT_STORAGE_BUCKET: str = "multimodal-rag"
+    OBJECT_STORAGE_ENDPOINT: Optional[str] = None
+    AWS_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+
     # Database
     DATABASE_URL: str = Field(
         default=f"sqlite+aiosqlite:///{ROOT_DIR / 'data' / 'multimodal_rag.db'}"
@@ -49,6 +57,8 @@ class Settings(BaseSettings):
     # Providers & Keys
     GEMINI_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    MONGODB_URI: Optional[str] = None
     HUGGINGFACE_API_KEY: Optional[str] = None
     HF_TOKEN: Optional[str] = None
 
@@ -57,7 +67,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
     # LLM & Generation
-    LLM_PROVIDER: str = "gemini"  # "gemini", "openai", "ollama"
+    LLM_PROVIDER: str = "gemini"  # "gemini", "openai", "groq", "ollama"
     LLM_MODEL: str = "gemini-3.5-flash-lite"
     FALLBACK_LLM_PROVIDER: str = "ollama"
     OLLAMA_BASE_URL: str = "http://localhost:11434"

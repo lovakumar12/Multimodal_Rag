@@ -162,11 +162,15 @@ cp .env.example .env
 Edit `.env` to configure your API keys (optional if running in offline fallback mode):
 ```ini
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash-lite
-DEFAULT_LLM_PROVIDER=gemini
+OPENAI_API_KEY=your_openai_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+LLM_PROVIDER=groq
+LLM_MODEL=llama-3.3-70b-versatile
 EMBEDDING_PROVIDER=sentence-transformers
 AUTO_DESCRIBE_IMAGES=true
 ```
+
+Choose `LLM_PROVIDER=groq` with `GROQ_API_KEY` to generate answers using a model available in your Groq account. To use an OpenAI GPT model, configure `OPENAI_API_KEY`, set `LLM_PROVIDER=openai`, and choose that model with `LLM_MODEL`. Groq-hosted models and OpenAI GPT models use separate providers and API keys.
 
 ### 2. Backend Setup & Startup
 Navigate to the root directory and install Python dependencies:

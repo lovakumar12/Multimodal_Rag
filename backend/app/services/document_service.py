@@ -14,7 +14,7 @@ from backend.app.schemas.document import (
     ExtractedImageResponse,
     ExtractedTableResponse,
 )
-from backend.app.storage.local_storage import storage_service
+from backend.app.storage import storage_service
 from backend.app.workers.ingestion_worker import run_ingestion_task
 
 

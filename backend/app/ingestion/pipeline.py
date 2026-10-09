@@ -8,7 +8,7 @@ from backend.app.extraction import get_extractor_for_file
 from backend.app.ingestion.relationship_builder import RelationshipBuilder
 from backend.app.repositories.document_repository import DocumentRepository
 from backend.app.retrieval.vector_store import vector_store
-from backend.app.storage.local_storage import storage_service
+from backend.app.storage import storage_service
 
 
 class IngestionPipeline:
