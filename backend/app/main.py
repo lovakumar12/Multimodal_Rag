@@ -12,7 +12,10 @@ from backend.app.core.logging import logger
 async def lifespan(app: FastAPI):
     """Application startup and shutdown events."""
     logger.info("Starting up Multimodal RAG Platform Backend...")
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        logger.error(f"Database initialization error on startup: {e}")
     try:
         from backend.app.core.database import AsyncSessionLocal
         from backend.app.retrieval.vector_store import vector_store

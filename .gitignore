@@ -253,3 +253,6 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+temp_key*
+infrastructure/terraform/*.tfvars
+
