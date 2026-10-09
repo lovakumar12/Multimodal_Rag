@@ -40,6 +40,12 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
       - LLM_MODEL=${LLM_MODEL:-gemini-3.5-flash-lite}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - OBJECT_STORAGE_BUCKET=${OBJECT_STORAGE_BUCKET:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - MONGODB_URI=${MONGODB_URI:-}
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - VECTOR_STORE_TYPE=faiss
