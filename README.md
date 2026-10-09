@@ -9,6 +9,12 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg)](https://www.typescriptlang.org/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC.svg)](https://tailwindcss.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![AWS](https://img.shields.io/badge/AWS-ALB%20Deployed-FF9900.svg)](http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com)
+
+### 🌐 Live Production Deployment
+- **Web Application (UI)**: [http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com](http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com)
+- **Interactive API Documentation (Swagger)**: [http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com/docs](http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com/docs)
+- **Health & Readiness Check**: [http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com/api/v1/ready](http://multimodal-rag-alb-production-1105977617.us-east-1.elb.amazonaws.com/api/v1/ready)
 
 ---
 
