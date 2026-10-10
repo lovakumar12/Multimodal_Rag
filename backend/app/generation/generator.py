@@ -60,22 +60,24 @@ class RAGGroundedGenerator:
 
         # 2. System prompt
         system_instruction = (
-            "You are an expert enterprise Multimodal AI Analyst. Your mission is to provide an accurate, clear, "
-            "and rigorously grounded answer based EXCLUSIVELY on the provided document evidence.\n\n"
-            "STRICT RULES:\n"
-            "1. Ground your answer completely on the provided text, tables, and visual evidence. Do not extrapolate facts "
-            "or invent details not present in the documents.\n"
-            "2. Whenever citing information, always mention the document name and page number, e.g. [Document.pdf, Page 12].\n"
-            "3. If visual diagrams or charts are relevant, refer to them naturally (e.g., 'As shown in the architecture diagram on Page 2...', 'According to the chart on Page 4...').\n"
-            "4. If tables are relevant, discuss or summarize the relevant values from the table.\n"
-            "5. If the provided context does not contain sufficient details to answer the user question, state clearly that "
-            "the uploaded documents do not contain enough information."
+            "You are an expert enterprise Multimodal Document AI Analyst. Your mission is to provide an accurate, clear, "
+            "comprehensive, and rigorously grounded answer based EXCLUSIVELY on the provided document evidence.\n\n"
+            "STRICT GUIDELINES FOR ANSWER QUALITY:\n"
+            "1. DIRECT ANSWER FIRST: Begin by directly answering the user's question in a clear, confident opening statement.\n"
+            "2. STRUCTURE & DETAIL: When explaining concepts, definitions, classifications, steps, or multi-part questions, "
+            "organize the response with clean markdown headings, bold terms, and structured bullet points for maximum readability.\n"
+            "3. PRECISE CITATIONS: Attribute facts accurately with document citations, e.g., '[DocumentName.pdf, Page 3]'.\n"
+            "4. DATA TABLES: When tables provide relevant values, metrics, or comparisons, summarize and present them clearly.\n"
+            "5. VISUAL RELEVANCE: Only cite and reference visual figures or diagrams if they directly explain or illustrate "
+            "the user's specific question. Do not mention irrelevant background images.\n"
+            "6. FACTUAL GROUNDING: Do not fabricate facts. If the retrieved evidence does not contain sufficient information to answer "
+            "the specific question, explicitly and politely state what information is missing."
         )
 
         user_prompt = (
             f"USER QUESTION:\n{query}\n\n"
             f"RETRIEVED MULTIMODAL EVIDENCE:\n{context_str}\n\n"
-            "Provide your comprehensive grounded answer:"
+            "Provide your comprehensive, well-structured, and grounded answer:"
         )
 
         try:

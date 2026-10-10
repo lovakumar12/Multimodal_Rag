@@ -197,9 +197,24 @@ class PDFExtractor(BaseExtractor):
                 width = base_image.get("width", 0)
                 height = base_image.get("height", 0)
 
-                # Filter out tiny icon decorations, spacer lines, bullet points (< 50x50)
-                if width < 50 or height < 50:
+                # 1. Filter out tiny icon decorations, bullets, footer badges (< 120x120)
+                if width < 120 or height < 120:
                     continue
+
+                # 2. Filter out extreme aspect ratios (horizontal dividers, column lines)
+                aspect_ratio = max(width, height) / max(1, min(width, height))
+                if aspect_ratio > 5.5:
+                    continue
+
+                # 3. Filter out solid-color patches, blank blocks, or transparent masks
+                try:
+                    from PIL import ImageStat
+                    with Image.open(io.BytesIO(image_bytes)) as pil_img:
+                        stat = ImageStat.Stat(pil_img)
+                        if stat.var and max(stat.var) < 15.0:
+                            continue
+                except Exception:
+                    pass
 
                 # Locate image bbox on page if available
                 rects = page.get_image_rects(xref)

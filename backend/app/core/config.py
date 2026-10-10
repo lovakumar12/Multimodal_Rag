@@ -79,13 +79,13 @@ class Settings(BaseSettings):
     AUTO_DESCRIBE_IMAGES: bool = True
 
     # Image Relevance Scoring Weights
-    WEIGHT_DESC_SIM: float = 0.35
-    WEIGHT_TEXT_SIM: float = 0.25
+    WEIGHT_DESC_SIM: float = 0.55
+    WEIGHT_TEXT_SIM: float = 0.15
     WEIGHT_CAPTION_SIM: float = 0.20
-    WEIGHT_PAGE_SIM: float = 0.10
-    WEIGHT_CO_OCCURRENCE: float = 0.10
-    IMAGE_RELEVANCE_THRESHOLD: float = 0.40
-    MAX_RETURNED_VISUALS: int = 3
+    WEIGHT_PAGE_SIM: float = 0.05
+    WEIGHT_CO_OCCURRENCE: float = 0.05
+    IMAGE_RELEVANCE_THRESHOLD: float = 0.52
+    MAX_RETURNED_VISUALS: int = 2
 
     # File Ingestion Limits
     MAX_FILE_SIZE_BYTES: int = 100 * 1024 * 1024  # 100MB

@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.errors import NotFoundError
+from backend.app.generation.conversational_handler import conversational_handler
 from backend.app.generation.generator import rag_generator
 from backend.app.repositories.conversation_repository import ConversationRepository
 from backend.app.repositories.kb_repository import KnowledgeBaseRepository
@@ -47,7 +48,29 @@ class ChatService:
             content=req.query,
         )
 
-        # 4. Multimodal Retrieval with Relationship Expansion
+        # 4. Check for Conversational Intent (Greetings, Small Talk, Capabilities)
+        is_conv, conv_reply = conversational_handler.check_conversational_intent(req.query)
+        if is_conv and conv_reply:
+            assistant_msg = await self.conv_repo.add_message(
+                conversation_id=conv_id,
+                role="assistant",
+                content=conv_reply,
+                sources_json=[],
+                visuals_json=[],
+                tables_json=[],
+            )
+            await self.session.commit()
+            return ChatResponse(
+                conversation_id=conv_id,
+                message_id=assistant_msg.id,
+                answer=conv_reply,
+                confidence=1.0,
+                sources=[],
+                visuals=[],
+                tables=[],
+            )
+
+        # 5. Multimodal Retrieval with Relationship Expansion
         search_res = await self.retriever.search(
             query=req.query,
             kb_id=req.kb_id,

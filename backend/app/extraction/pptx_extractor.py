@@ -86,6 +86,8 @@ class PPTXExtractor(BaseExtractor):
                     try:
                         image = shape.image
                         img_bytes = image.blob
+                        if len(img_bytes) < 3000:  # Skip tiny bullets and decorative icons (< 3KB)
+                            continue
                         img_ext = image.ext.upper() if image.ext else "PNG"
 
                         surrounding = f"Slide title: {slide_title or 'None'}. Text: {' '.join(text_chunks[:2])}"

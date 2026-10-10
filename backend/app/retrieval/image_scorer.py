@@ -34,10 +34,18 @@ class MultiSignalImageScorer:
         caption_sim: float = 0.0,
         page_relevance: float = 0.0,
         is_co_occurring: bool = False,
+        query_has_visual_intent: bool = False,
     ) -> float:
         """
         Combines weighted signals into a composite relevance score.
+        Filters out low-relevance or purely co-occurring images when query is text-focused.
         """
+        # If user did not ask for a visual/diagram and semantic similarity is weak (< 0.35),
+        # cancel co-occurrence prior so irrelevant images on the same page don't get selected
+        if not query_has_visual_intent and desc_sim < 0.35:
+            is_co_occurring = False
+            page_relevance = min(page_relevance, 0.2)
+
         co_occurrence_score = 1.0 if is_co_occurring else 0.0
 
         # If caption similarity wasn't calculated separately, approximate with description similarity
@@ -56,8 +64,26 @@ class MultiSignalImageScorer:
         final_score = float(np.clip(composite, 0.0, 1.0))
         return round(final_score, 4)
 
-    def is_relevant(self, score: float) -> bool:
-        return score >= self.threshold
+    def is_relevant(
+        self,
+        score: float,
+        desc_sim: float = 0.0,
+        query_has_visual_intent: bool = False,
+        image: Optional[ExtractedImage] = None,
+    ) -> bool:
+        if score < self.threshold:
+            return False
+
+        # If user didn't ask for visuals, require genuine semantic correlation
+        if not query_has_visual_intent and desc_sim < 0.38:
+            return False
+
+        # Filter out tiny icon decorations or buttons if metadata is present
+        if image:
+            if (image.width and image.width < 100) or (image.height and image.height < 100):
+                return False
+
+        return True
 
 
 image_scorer = MultiSignalImageScorer()
