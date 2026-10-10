@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Copy, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { SearchResultTable } from '../types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface TableViewerProps {
   table: SearchResultTable;
@@ -83,8 +84,8 @@ export const TableViewer: React.FC<TableViewerProps> = ({ table, onOpenSource })
               {table.rows.map((row, rIdx) => (
                 <tr key={rIdx} className="hover:bg-slate-800/40 transition-colors">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="p-2 whitespace-nowrap text-slate-300">
-                      {String(cell || '')}
+                    <td key={cIdx} className="p-2 whitespace-nowrap text-slate-300 align-middle">
+                      <MarkdownRenderer content={String(cell || '')} />
                     </td>
                   ))}
                 </tr>
@@ -92,8 +93,8 @@ export const TableViewer: React.FC<TableViewerProps> = ({ table, onOpenSource })
             </tbody>
           </table>
         ) : (
-          <div className="text-slate-300 text-xs leading-relaxed font-sans whitespace-pre-wrap bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/60">
-            {table.markdown}
+          <div className="text-slate-300 text-xs leading-relaxed font-sans bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/60">
+            <MarkdownRenderer content={table.markdown} />
           </div>
         )}
       </div>

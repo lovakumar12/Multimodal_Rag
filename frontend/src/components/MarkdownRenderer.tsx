@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import { FileText } from 'lucide-react';
 
 interface MarkdownRendererProps {
@@ -19,6 +20,9 @@ function normalizeMarkdownMath(raw: string): string {
 
   let text = raw;
 
+  // 0. Convert Asian/Fullwidth citation brackets 【...】 to standard [...]
+  text = text.replace(/【/g, '[').replace(/】/g, ']');
+
   // 1. Standard LaTeX block delimiters: \[ ... \] -> $$ ... $$
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`);
 
@@ -31,7 +35,6 @@ function normalizeMarkdownMath(raw: string): string {
   });
 
   // 4. Handle standalone LaTeX matrix or aligned blocks:
-  // e.g. X = \begin{bmatrix} ... \end{bmatrix} ...
   text = text.replace(/(?:^|\n)\s*([A-Za-z0-9_'\^= ]*?\\begin\{(?:bmatrix|pmatrix|vmatrix|Vmatrix|matrix|aligned|align|gather)\}[\s\S]*?\\end\{(?:bmatrix|pmatrix|vmatrix|Vmatrix|matrix|aligned|align|gather)\}[^\n$]*)/g, (match, body) => {
     if (body.includes('$$')) return match;
     const cleaned = body.replace(/\$([^\n$]+)\$/g, '$1').trim();
@@ -45,7 +48,7 @@ function normalizeMarkdownMath(raw: string): string {
     return `\n\n$$\n${cleaned}\n$$\n\n`;
   });
 
-  // 6. Handle table rows containing LaTeX without dollars:
+  // 6. Handle table rows containing LaTeX or math variables without dollars:
   const lines = text.split('\n');
   const processedLines = lines.map(line => {
     const trimmed = line.trim();
@@ -53,14 +56,25 @@ function normalizeMarkdownMath(raw: string): string {
       const cells = line.split('|');
       const newCells = cells.map((cell, idx) => {
         if (idx === 0 || idx === cells.length - 1) return cell;
-        const cTrim = cell.trim();
-        if (cTrim.includes('\\') && !cTrim.includes('$') && /\\(text|frac|sqrt|left|right|big|Big|cdot|times|in|mathbb|top|sum|prod)\b/.test(cTrim)) {
-          return ` $${cTrim}$ `;
+        // In table cells, convert block math $$ to inline math $
+        let cTrim = cell.trim().replace(/\$\$/g, '$');
+        if ((cTrim.includes('\\') || /([A-Za-z]_[A-Za-z0-9]+|[A-Za-z]\^[A-Za-z0-9]+)/.test(cTrim)) && !cTrim.includes('$')) {
+          if (/\\(text|frac|sqrt|left|right|big|Big|cdot|times|in|mathbb|top|sum|prod|operatorname|begin)\b/.test(cTrim) || /^[A-Za-z0-9_'\^=, \\\{\}\+\-\*\/\(\)]+=[A-Za-z0-9_'\^=, \\\{\}\+\-\*\/\(\)]+$/.test(cTrim)) {
+            return ` $${cTrim}$ `;
+          }
         }
-        return cell;
+        return ` ${cTrim} `;
       });
       return newCells.join('|');
     }
+
+    // Standalone lines that look like mathematical formulas without $ or $$:
+    if (!trimmed.startsWith('#') && !trimmed.startsWith('-') && !trimmed.startsWith('*') && !trimmed.startsWith('|') && !trimmed.includes('$$') && !trimmed.includes('$')) {
+      if (/^[A-Za-z][A-Za-z0-9_'\^]*\s*=\s*[^.\n]+$/.test(trimmed) && (trimmed.includes('_') || trimmed.includes('^') || trimmed.includes('\\'))) {
+        return `\n\n$$\n${trimmed}\n$$\n\n`;
+      }
+    }
+
     return line;
   });
   text = processedLines.join('\n');
@@ -135,7 +149,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onO
     <div className="chatgpt-markdown text-slate-100 text-[14.5px] leading-7 font-sans space-y-3">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false, strict: false }]]}
         components={{
           p: ({ children }) => {
             // Process children to find text nodes with citations
