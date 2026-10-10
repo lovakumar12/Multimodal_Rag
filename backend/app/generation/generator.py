@@ -73,9 +73,20 @@ class RAGGroundedGenerator:
             "6. FACTUAL GROUNDING: Do not fabricate facts. If the retrieved evidence does not contain sufficient information to answer "
             "the specific question, explicitly and politely state what information is missing.\n"
             "7. MATHEMATICAL FORMULAS & INTUITIVE EXPLANATIONS:\n"
-            "   - Format all mathematical equations using standard LaTeX syntax enclosed in dollar signs: `$formula$` for inline math and `$$formula$$` on its own line for block equations. Do NOT output raw bracket delimiters like '\\(' or '\\['.\n"
-            "   - EXPLAIN INTUITIVELY (MAKE IT EASY TO UNDERSTAND): Never present raw mathematical equations without explanation. For every formula, explicitly define every variable and symbol in plain, accessible English (e.g., Q = Query vector representing what we are looking for, K = Key vector representing what content exists, V = Value vector holding the actual representations, d_k = dimension of the key/query vector).\n"
-            "   - USE CONCRETE WORKED EXAMPLES: When explaining mechanisms or architectures (such as Multi-Head Attention, Scaled Dot-Product Attention, linear projections), provide a step-by-step walkthrough with realistic concrete numbers (e.g., sequence length T = 10 words, model dimension d_model = 512, number of heads h = 8, per-head dimension d_k = 64) to show how tensor shapes transform and what each operation actually achieves."
+            "   - MANDATORY DELIMITERS: Every single mathematical expression, variable, or symbol MUST be enclosed in LaTeX dollar signs.\n"
+            "     * Inline variables/symbols: Always use single dollars: `$Q$`, `$K$`, `$V$`, `$d_k = 64$`, `$W_i^Q \\in \\mathbb{R}^{d_{\\text{model}} \\times d_k}$`.\n"
+            "     * Block equations & matrices: Always place on their own lines with double dollars:\n"
+            "       $$\n"
+            "       \\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V\n"
+            "       $$\n"
+            "       and matrices:\n"
+            "       $$\n"
+            "       X = \\begin{bmatrix} 1 & 0 \\\\ 0 & 1 \\end{bmatrix}\n"
+            "       $$\n"
+            "   - NO UNWRAPPED LATEX: Never output raw LaTeX commands (e.g. \\begin{bmatrix}, \\text{Attention}, \\frac, \\sqrt, \\displaystyle) without enclosing dollar signs.\n"
+            "   - NO HTML BREAK TAGS: Never insert '<br>' or HTML tags inside or adjacent to mathematical formulas.\n"
+            "   - IN TABLES: Every formula or math expression in a table cell MUST be enclosed in `$ ... $`, e.g. `| Step 1 | $Q_1 = QW_1^Q$ |`.\n"
+            "   - EXPLAIN INTUITIVELY (MAKE IT EASY TO UNDERSTAND): Never present raw equations alone. Explicitly define what every symbol represents in plain English (e.g. Q = Query vector, K = Key vector, V = Value vector, d_k = head dimension) and walk through concrete numbers (e.g. sequence length T = 10 words, d_model = 512, h = 8 heads, d_k = 64) so any reader can follow how tensor shapes transform step by step."
         )
 
         user_prompt = (

@@ -12,29 +12,68 @@ interface MarkdownRendererProps {
 
 /**
  * Normalizes LaTeX math expressions in markdown text so they are properly
- * recognized and parsed by remark-math and rendered by KaTeX.
+ * recognized and parsed by remark-math and rendered by KaTeX without syntax breaks.
  */
 function normalizeMarkdownMath(raw: string): string {
   if (!raw) return '';
 
   let text = raw;
 
-  // 1. Convert block math \[ ... \] to $$ ... $$
-  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
+  // 1. Standard LaTeX block delimiters: \[ ... \] -> $$ ... $$
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `\n\n$$\n${formula.trim()}\n$$\n\n`);
+
+  // 2. Standard LaTeX inline delimiters: \( ... \) -> $ ... $
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula.trim()}$`);
+
+  // 3. Handle <br> \displaystyle ... <br> pattern
+  text = text.replace(/<br\s*\/?>\s*\\displaystyle\s*([\s\S]*?)\s*<br\s*\/?>/gi, (_, formula) => {
+    return `<br>\n\n$$\n${formula.trim()}\n$$\n\n<br>`;
+  });
+
+  // 4. Handle standalone LaTeX matrix or aligned blocks:
+  // e.g. X = \begin{bmatrix} ... \end{bmatrix} ...
+  text = text.replace(/(?:^|\n)\s*([A-Za-z0-9_'\^= ]*?\\begin\{(?:bmatrix|pmatrix|vmatrix|Vmatrix|matrix|aligned|align|gather)\}[\s\S]*?\\end\{(?:bmatrix|pmatrix|vmatrix|Vmatrix|matrix|aligned|align|gather)\}[^\n$]*)/g, (match, body) => {
+    if (body.includes('$$')) return match;
+    const cleaned = body.replace(/\$([^\n$]+)\$/g, '$1').trim();
+    return `\n\n$$\n${cleaned}\n$$\n\n`;
+  });
+
+  // 5. Standalone math lines starting with \text{Attention}, \text{MultiHead}, etc.:
+  text = text.replace(/(?:^|\n)\s*(\\text\{(?:Attention|MultiHead|Concat|Softmax|softmax)\}[^\n]+)/g, (match, line) => {
+    if (line.includes('$$')) return match;
+    const cleaned = line.replace(/\$([^\n$]+)\$/g, '$1').trim();
+    return `\n\n$$\n${cleaned}\n$$\n\n`;
+  });
+
+  // 6. Handle table rows containing LaTeX without dollars:
+  const lines = text.split('\n');
+  const processedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|') && !trimmed.includes('---')) {
+      const cells = line.split('|');
+      const newCells = cells.map((cell, idx) => {
+        if (idx === 0 || idx === cells.length - 1) return cell;
+        const cTrim = cell.trim();
+        if (cTrim.includes('\\') && !cTrim.includes('$') && /\\(text|frac|sqrt|left|right|big|Big|cdot|times|in|mathbb|top|sum|prod)\b/.test(cTrim)) {
+          return ` $${cTrim}$ `;
+        }
+        return cell;
+      });
+      return newCells.join('|');
+    }
+    return line;
+  });
+  text = processedLines.join('\n');
+
+  // 7. Handle lines starting with \displaystyle:
+  text = text.replace(/\\displaystyle\s+([^\n<$]+)/g, (_, formula) => {
     return `\n\n$$\n${formula.trim()}\n$$\n\n`;
   });
 
-  // 2. Convert inline math \( ... \) to $ ... $
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
-    return `$${formula.trim()}$`;
-  });
-
-  // 3. Catch parenthesized expressions containing explicit LaTeX commands:
-  // e.g. (Q, K, V \in \mathbb{R}^{T \times d_{\text{model}}}) or (\text{Attention}...)
-  // Converts to $ ... $ so KaTeX renders the equation properly
-  text = text.replace(/(?<!\$)\(([^\n()]*?\\[a-zA-Z]+[^\n()]*?)\)(?!\$)/g, (match, inner) => {
-    if (/\\(in|mathbb|frac|sqrt|times|top|sum|prod|cdot|dots|ldots|alpha|beta|gamma|partial|le|ge|neq|mathbf|mathcal|text)\b/.test(inner)) {
-      return `$${inner.trim()}$`;
+  // 8. Fix stray $$ at end of bullet
+  text = text.replace(/([^$\n]+)\$\$\s*$/gm, (match, before) => {
+    if (!before.includes('$$')) {
+      return `$$${before.trim()}$$`;
     }
     return match;
   });
@@ -96,7 +135,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onO
     <div className="chatgpt-markdown text-slate-100 text-[14.5px] leading-7 font-sans space-y-3">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
         components={{
           p: ({ children }) => {
             // Process children to find text nodes with citations
