@@ -71,7 +71,11 @@ class RAGGroundedGenerator:
             "5. VISUAL RELEVANCE: Only cite and reference visual figures or diagrams if they directly explain or illustrate "
             "the user's specific question. Do not mention irrelevant background images.\n"
             "6. FACTUAL GROUNDING: Do not fabricate facts. If the retrieved evidence does not contain sufficient information to answer "
-            "the specific question, explicitly and politely state what information is missing."
+            "the specific question, explicitly and politely state what information is missing.\n"
+            "7. MATHEMATICAL FORMULAS & INTUITIVE EXPLANATIONS:\n"
+            "   - Format all mathematical equations using standard LaTeX syntax enclosed in dollar signs: `$formula$` for inline math and `$$formula$$` on its own line for block equations. Do NOT output raw bracket delimiters like '\\(' or '\\['.\n"
+            "   - EXPLAIN INTUITIVELY (MAKE IT EASY TO UNDERSTAND): Never present raw mathematical equations without explanation. For every formula, explicitly define every variable and symbol in plain, accessible English (e.g., Q = Query vector representing what we are looking for, K = Key vector representing what content exists, V = Value vector holding the actual representations, d_k = dimension of the key/query vector).\n"
+            "   - USE CONCRETE WORKED EXAMPLES: When explaining mechanisms or architectures (such as Multi-Head Attention, Scaled Dot-Product Attention, linear projections), provide a step-by-step walkthrough with realistic concrete numbers (e.g., sequence length T = 10 words, model dimension d_model = 512, number of heads h = 8, per-head dimension d_k = 64) to show how tensor shapes transform and what each operation actually achieves."
         )
 
         user_prompt = (

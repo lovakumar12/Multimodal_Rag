@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { FileText } from 'lucide-react';
 
 interface MarkdownRendererProps {
@@ -8,7 +10,41 @@ interface MarkdownRendererProps {
   onOpenCitation?: (docName: string, page: number) => void;
 }
 
+/**
+ * Normalizes LaTeX math expressions in markdown text so they are properly
+ * recognized and parsed by remark-math and rendered by KaTeX.
+ */
+function normalizeMarkdownMath(raw: string): string {
+  if (!raw) return '';
+
+  let text = raw;
+
+  // 1. Convert block math \[ ... \] to $$ ... $$
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
+    return `\n\n$$\n${formula.trim()}\n$$\n\n`;
+  });
+
+  // 2. Convert inline math \( ... \) to $ ... $
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
+    return `$${formula.trim()}$`;
+  });
+
+  // 3. Catch parenthesized expressions containing explicit LaTeX commands:
+  // e.g. (Q, K, V \in \mathbb{R}^{T \times d_{\text{model}}}) or (\text{Attention}...)
+  // Converts to $ ... $ so KaTeX renders the equation properly
+  text = text.replace(/(?<!\$)\(([^\n()]*?\\[a-zA-Z]+[^\n()]*?)\)(?!\$)/g, (match, inner) => {
+    if (/\\(in|mathbb|frac|sqrt|times|top|sum|prod|cdot|dots|ldots|alpha|beta|gamma|partial|le|ge|neq|mathbf|mathcal|text)\b/.test(inner)) {
+      return `$${inner.trim()}$`;
+    }
+    return match;
+  });
+
+  return text;
+}
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onOpenCitation }) => {
+  const processedContent = React.useMemo(() => normalizeMarkdownMath(content), [content]);
+
   // Regex to detect citations like [king_Ashoka.pdf, Page 1] or [Doc: filename, Page X]
   // We can render custom citation pills by transforming bracketed citations
   const renderTextWithCitations = (text: string) => {
@@ -59,7 +95,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onO
   return (
     <div className="chatgpt-markdown text-slate-100 text-[14.5px] leading-7 font-sans space-y-3">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={{
           p: ({ children }) => {
             // Process children to find text nodes with citations
@@ -157,7 +194,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onO
           ),
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );
